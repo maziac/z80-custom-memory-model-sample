@@ -51,7 +51,7 @@
             },
             "sjasmplus": [
                 {
-                    "path": "z80-peripherals-sample.sld",
+                    "path": "z80-custom-memory-model-sample.sld",
                 }
             ],
             "history": {
@@ -70,7 +70,7 @@
             "topOfStack": "stack_top",
             "loadObjs": [
                 {
-                    "path": "z80-peripherals-sample.obj",
+                    "path": "z80-custom-memory-model-sample.obj",
                     "start": "0x0000"
                 }
             ],

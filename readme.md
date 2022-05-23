@@ -2,19 +2,18 @@
 
 # Introduction
 
-This is a small Z80 assembler program that uses custom javascript code to emulate Z80 ports inside [DeZog (Z80 debugger)](https://github.com/maziac/DeZog).
+This is a small Z80 assembler program that demonstrates how to define a custom memory model to emulate bank switched memory inside the internal simulator (zsim) of [DeZog](https://github.com/maziac/DeZog).
 
 
 # Prerequisites
 
 - Visual Studio Code (vscode)
-- [DeZog](https://github.com/maziac/DeZog) (>= v2.0.0)
+- [DeZog](https://github.com/maziac/DeZog) (>= v3.0.0, not yet available)
 - Z80 Assembler: sjasmplus, https://github.com/z00m128/sjasmplus
 
-The program runs inside the internal Z80 simulator.
+The program runs inside the internal Z80 simulator (zsim).
 
 This is an "advanced" topic, so it is recommended that you have already some experience with debugging with DeZog.
-A more simple sample program (without custom simulation of ports) can be found here: [z80-sample-program](https://github.com/maziac/z80-sample-program).
 
 
 # Building
@@ -26,39 +25,80 @@ However, if you would like to do some changes you need to compile.
 From the menu choose "Terminal->Run Build Task..."
 tasks.json is configured such that it will call sjasmplus with the required parameters.
 
-There are several .asm files which are all included in the main.asm file. This file is the one being assembled.
+This main.asm file is the one being assembled.
 
-After the build is ready a z80-peripherals-sample.obj file is created which can be used with ZEsarUX.
-
+After the build is ready a z80-peripherals-sample.obj file is created which can be used with 'zsim'.
 
 
 # The Program Itself
 
-The Z80 assembler program is used to demonstrate the simulation of interrupts and
-in- and out-ports.
+The Z80 assembler program is used to demonstrate the bank switching with a custom defined memory model.
 
-The program itself calculates the addition of 2 binary values.
-The result is shown in the ZSimulationView.
-Additionally the result can be memorized.
-The binary values are input via 2 in-ports, 0x8000 and 0x8001.
-The values are added in a loop and output to out-port 0x9000.
-Additionally it is possible to generate an interrupt (IM 1, address 0x0038)
-to store the result. The stored value is output to 0x9001.
+The model used here is very simple:
+- Addresses 0x0000 - 0xBFFF are mapped to bank 0 which cannot be switched.
+- Addresses 0xC000 - 0xFFFF are mapped to bank 1, 2, 3 or 4. Which bank is paged in depends on a value that is written to a port.
 
-There are 3 parts to this demo:
-a) the assembler program which deals with the in- and out-ports and the interrupt. This is all in 'main.asm'
-b) the HW simulation code in 'simulation/ports.js'
-c) and the UI in 'simulation/ui.html'
+DeZog's memory models support IO bank switching. I.e. by writing to a port it can be determined what bank is currently visible (read/write).
 
-Important to note is that the javascript code to simulate the HW ('simulation/ports.js') works
-synchronously. I.e. all request from the simulator (e.g. reading a port) have
-to be handled immediately so that it does not stop the simulation.
+The address ranges are called slots. The memory that can be paged in are the memory banks.
+The memory model is defined in 'launch.json' as:
 
-On the other hand the UI ('simulation/ui.html') works asynchronously. It communicates with the HW
-simulation code through messages only. No direct function calls.
+~~~json
+	"memoryModel": "CUSTOM",
+	"customMemory": {
+		"slots": [
+			{
+				"range": [
+					"0x0000",
+					"0xBFFF"
+				],
+				"banks": [
+					{
+						"index": 0
+					}
+				]
+			},
+			{
+				"name": "slotC000",
+				"range": [
+					"0xC000",
+					"0xFFFF"
+				],
+				"banks": [
+					{
+						"index": [
+							1,
+							4
+						]
+					}
+				]
+			},
+		],
+		"ioMmu": [
+			"if(portAddress == 0x100) {",
+			"  bank = portValue;",
+			"  slotC000 = bank;",
+			"}"
+		]
+	}
+~~~
+
+you need to choose "memoryModel" as "CUSTOM" then you can define the memory model in "customMemory".
+
+'banks' can be defined either as a single bank (with a single index) or as a range of banks with start and end index.
+
+"ioMmu" contains the javascript code that is executed whenever a 'OUT'  operation is performed by the Z80. It is an array of strings for better readability.
+'portAddress' and 'portValue' are predefined values.
+It is the address being written to and teh value that was written.
+
+In the example above the portValue is directly assigned to the slot named 'slotC000'.
+You can address slots either by their optional names or by index.
 
 
 # Program Flow
+
+HIER WEITER
+
 
 Note: To view the sequence charts in markdown you need a viewer that support puml (plantuml). On the github pages you won't see anything useful.
 
