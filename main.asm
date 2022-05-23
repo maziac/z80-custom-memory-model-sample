@@ -44,7 +44,8 @@ main:
     call init_banks
 
 
-test_banks:
+; Switches through all banks.
+switch_banks:
     ; Switch banks
 .start_switch_loop:
     ld a,1
@@ -56,6 +57,9 @@ test_banks:
     jr .start_switch_loop
 
 
+; Initialize each banke with a different number written to 0xC000.
+; Bank 1 will get a 1.
+; Bank 2 a 2 and so on.
 init_banks:
     ; write a different value to banks 1-4.
     ld bc,0x0100

@@ -27,7 +27,7 @@ tasks.json is configured such that it will call sjasmplus with the required para
 
 This main.asm file is the one being assembled.
 
-After the build is ready a z80-peripherals-sample.obj file is created which can be used with 'zsim'.
+After the build is ready a z80-custom-memory-model-sample.obj file is created which can be used with 'zsim'.
 
 
 # The Program Itself
@@ -36,7 +36,7 @@ The Z80 assembler program is used to demonstrate the bank switching with a custo
 
 The model used here is very simple:
 - Addresses 0x0000 - 0xBFFF are mapped to bank 0 which cannot be switched.
-- Addresses 0xC000 - 0xFFFF are mapped to bank 1, 2, 3 or 4. Which bank is paged in depends on a value that is written to a port.
+- Addresses 0xC000 - 0xFFFF are mapped to bank 1, 2, 3 or 4. Which bank is paged-in depends on a value that is written to a port.
 
 DeZog's memory models support IO bank switching. I.e. by writing to a port it can be determined what bank is currently visible (read/write).
 
@@ -89,7 +89,7 @@ you need to choose "memoryModel" as "CUSTOM" then you can define the memory mode
 
 "ioMmu" contains the javascript code that is executed whenever a 'OUT'  operation is performed by the Z80. It is an array of strings for better readability.
 'portAddress' and 'portValue' are predefined values.
-It is the address being written to and teh value that was written.
+It is the address being written to and the value that was written.
 
 In the example above the portValue is directly assigned to the slot named 'slotC000'.
 You can address slots either by their optional names or by index.
@@ -97,128 +97,13 @@ You can address slots either by their optional names or by index.
 
 # Program Flow
 
-HIER WEITER
+The program simply writes a number at address 0xC0000 in each of the banks ('init_banks') and then it switches all banks in a loop ('switch_banks').
 
+From the launch.json a memory view is started with the debug session (```-mv 0xC000 16```).
+While you step through the code you can see that the memory value at 0xC000 is changed with every OUT instruction.
 
-Note: To view the sequence charts in markdown you need a viewer that support puml (plantuml). On the github pages you won't see anything useful.
+In the VARIABLE's pane in the "Memory Banks" section you can see at the same time that the bank index for that slot also changes.
 
+Single step through the code and have a look how the memory view and the "Memory Banks" change when the OUT is executed.
 
-~~~puml
-hide footbox
-title Main program flow
-
-participant z80 as "main.asm"
-participant js as "port.js"
-participant dezog as "DeZog"
-participant html as "ui.html"
-
-loop
-	note over z80: ld bc,0x8000\nin a,(bc)
-	z80 -> js: API.readPort(0x8000)
-	note over js: Return stored value1
-	z80 <-- js: value1
-
-	note over z80: ld e,a\nld bc,0x8001\nin a,(c)
-	z80 -> js: API.readPort(0x8001)
-	note over js: Return stored value2
-	z80 <-- js: value2
-
-    note over z80: add a,e\nld (result),a
-
-    note over z80: ld bc,0x9000\nout (c),a
-	z80 -> js: API.writePort(0x9000)
-	note over js: Prepare message for UI
-	js -> dezog: API.sendToCustomUi\n({'port_written', 0x9000, value})
-	note over dezog: Some delay
-	dezog -> html: UIAPI.receivedFromCustomLogic\n({'port_written', 0x9000, value})
-end
-
-alt interrupt
-
-    note over z80: push af\npush bc
-
-    note over z80: ld a,(result)\nld bc,0x9001\nout (c),a
-	z80 -> js: API.writePort(0x9001)
-	note over js: Prepare message for UI
-	js -> dezog: UAPI.sendToCustomUi\n({'port_written', 0x9001, value})
-	note over dezog: Some delay
-	dezog -> html: UIAPI.receivedFromCustomLogic\n({'port_written', 0x9001, value})
-
-    note over z80: pop bc\npop af\nei\nreti
-end
-~~~
-
-
-~~~puml
-hide footbox
-title Asynchronous input from UI
-
-participant z80 as "main.asm"
-participant js as "port.js"
-participant dezog as "DeZog"
-participant html as "ui.html"
-
-...
-note over html: User changed bit for value1
-html -> dezog: UIAPI.sendToCustomLogic\n({'input_port', 0x8000, value}
-dezog -> js: API.receivedFromCustomUI\n({'input_port', 0x8000, value}
-note over js: value1 is stored for later use
-
-...
-note over html: User changed bit for value2
-html -> dezog: UIAPI.sendToCustomLogic\n({'input_port', 0x8001, value}
-dezog -> js: API.receivedFromCustomUI\n({'input_port', 0x8001, value}
-note over js: value2 is stored for later use
-
-...
-note over html: User input
-html -> dezog: UIAPI.sendToCustomLogic\n({'generate_interrupt'}
-dezog -> js: API.receivedFromCustomUI\n({'generate_interrupt'}
-note over js: API.generateInterrupt()
-...
-~~~
-
-Note: the messages 'port_written', 'input_port' and 'generate_interrupt' are all custom defined messages.
-
-
-# Running the Program
-
-To run the program the launch.json needs to be configured.
-I.e. you need to give the paths to your custom code:
-~~~json
-"zsim": {
-	"customCode": {
-		"debug": true,
-		"jsPath": "simulation/ports.js",
-		"uiPath": "simulation/ui.html"
-	}
-}
-~~~
-
-If you let the program run you can see the custom code in the ZSimulationView.
-
-![](documentation/images/peripherals_sim.gif)
-
-"Value1" and "Value2" are the inputs for the input-ports.
-"Value1+Value2" and "Stored Value" are the output-ports.
-"Store (INT)" will result in generating an interrupt.
-
-
-# Logging
-
-You can see the logs in the OUTPUT window under "DeZog Custom Code".
-DeZog will log all messages and calls to the custom code by itself but you can also add your own logs.
-
-![](documentation/images/custom_code_log.jpg)
-
-
-# Testing your Custom Code from the Debug Console
-
-zsim also offers a few commands that may help in developing the custom code.
-In the debug console enter ```-e help```to see them.
-
-You can e.g. directly write to or read from ports:
-
-![](documentation/images/zsim_commands.gif)
-
-Your custom code (and the UI) is stimulated the same way as if the Z80 CPU would execute a port operation.
+![](images/mem.gif)
