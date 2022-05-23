@@ -6,9 +6,9 @@
             "type": "shell",
             "command": "sjasmplus",
             "args": [
-                "--sym=z80-peripherals-sample.labels",
-                "--sld=z80-peripherals-sample.sld",
-                "--raw=z80-peripherals-sample.obj",
+                "--sym=z80-custom-memory-model-sample.labels",
+                "--sld=z80-custom-memory-model-sample.sld",
+                "--raw=z80-custom-memory-model-sample.obj",
                 "--fullpath",
                 "main.asm"
             ],

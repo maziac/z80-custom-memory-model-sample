@@ -1,4 +1,4 @@
-# z80-peripherals-sample
+# z80-custom-memory-model-sample
 
 # Introduction
 

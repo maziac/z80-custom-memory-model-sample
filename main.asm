@@ -41,75 +41,10 @@ main:
     ld sp,stack_top
     im 1
     ei
-
-    ;jp iommu_test       ; Uncomment for demo of bank switching in ioMmu
-
-.loop:
-    ;halt
-    call add_port_inputs
-    ; Loop
-    jr .loop
+    call init_banks
 
 
-; Reads from port 8000h and 8001h, adds both values and stores them
-; to 'result' and port 9000h.
-add_port_inputs:
-    ; Load value 1 from port
-    ld bc,0x8000
-    in a,(c)
-    ; Save value
-    ld e,a
-
-    ; Load value 2 from port
-    ld bc,0x8001
-    in a,(c)
-
-    ; Add values
-    add a,e
-
-    ; Store result
-    ld (result),a
-
-    ; Output result to port
-    ld bc,0x9000
-    out (c),a
-    ret
-
-
-    defs $0038-$
-
-
-; Interrupt routine at 0x0038.
-; The interrupt memorizies the result to another port.
-im1_int:
-    push af
-    push bc
-
-    ld a,(result)
-    ld bc,0x9001
-    out (c),a
-
-    pop bc
-    pop af
-    ei
-    reti
-
-
-
-    defs 0x0100 - $
-
-iommu_test:
-    ; write a different value to banks 1-4.
-    ld bc,0x0100
-    ld a,1
-    ld hl,0xC000
-.fill_loop:
-    out (c),a   ; Switch bank
-    ld (hl),a   ; Put bank number in first address in bank
-    inc a
-    cp 5
-    jr nz,.fill_loop
-
+test_banks:
     ; Switch banks
 .start_switch_loop:
     ld a,1
@@ -121,6 +56,18 @@ iommu_test:
     jr .start_switch_loop
 
 
+init_banks:
+    ; write a different value to banks 1-4.
+    ld bc,0x0100
+    ld a,1
+    ld hl,0xC000
+.fill_loop:
+    out (c),a   ; Switch bank
+    ld (hl),a   ; Put bank number in first address in bank
+    inc a
+    cp 5
+    jr nz,.fill_loop
+    ret
 
 
     defs 0x0300 - $
@@ -138,19 +85,3 @@ STACK_SIZE: equ 20    ; in words
 stack_bottom:
     defs    STACK_SIZE*2, 0
 stack_top:
-
-
-;===========================================================
-; Data
-;===========================================================
-
-; The calculation result is stored here.
-result: defb 0
-
-
-;===========================================================
-; Unit tests
-;===========================================================
-
-    include "unit_tests/unit_tests.asm"
-
